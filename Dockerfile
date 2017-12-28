@@ -1,4 +1,4 @@
-FROM skiloop/node
+FROM skiloop/docker-node
 
 RUN addgroup -S app && adduser -S -g app app
 
