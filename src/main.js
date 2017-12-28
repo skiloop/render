@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || '3000';
 
 
-let config = {};
+let config = {width: 1499, height: 900};
 
 // Load config from config.json if it exists.
 if (fs.existsSync(CONFIG_PATH)) {
@@ -34,22 +34,47 @@ app.setConfig = (newConfig) => {
 
 app.use(compression());
 
-async function render(url, scroll, wait) {
+async function render(url, query) {
     const chromeless = new Chromeless({launchChrome: false, cdp: {port: config.port, host: config.host}});
-    const html = await chromeless.goto(url)
-        .scrollTo(0, scroll)
-        .wait(wait)
-        .html();
+    let html;
+    const scroll = parseInt(query.scroll) || 0;
+    const wait = parseInt(query.wait) || 0;
+    if (wait > 0) {
+        html = await chromeless.goto(url)
+            .scrollTo(0, scroll)
+            .wait(wait)
+            .html();
+    } else {
+        html = await chromeless.goto(url)
+            .scrollTo(0, scroll)
+            .html();
+    }
     await  chromeless.end();
     return html;
 }
 
-async function screenshot(url, scroll, wait) {
+async function screenshot(url, query) {
     const chromeless = new Chromeless({launchChrome: false, cdp: {port: config.port, host: config.host}});
-    const shot = await chromeless.goto(url)
-        .scrollTo(0, scroll)
-        .wait(wait)
-        .screenshot();
+    const width = Math.min(2000, parseInt(query.width) || config.width);
+    const height = Math.min(2000, parseInt(query.height) || config.height);
+    const scroll = parseInt(query.scroll) || 0;
+    const wait = parseInt(query.wait) || 0;
+    let shot;
+    if (wait > 0) {
+        shot = await chromeless
+            .setViewport({width: width, height: height})
+            .goto(url)
+            .scrollTo(0, scroll)
+            .wait(wait)
+            .screenshot();
+    } else {
+        shot = await chromeless
+            .setViewport({width: width, height: height})
+            .goto(url)
+            .scrollTo(0, scroll)
+            .screenshot();
+    }
+
     await  chromeless.end();
     return fs.readFileSync(shot);
 }
@@ -83,10 +108,8 @@ app.get('/render/:url(*)', async (request, response) => {
         response.status(403).send('Render request forbidden, domain excluded');
         return;
     }
-    const scroll = parseInt(request.query.scroll || "0");
-    const wait = parseInt(request.query.wait || "0");
     const start = now();
-    const html = await render(request.params.url, scroll, wait);
+    const html = await render(request.params.url, request.query);
     response.set('UseTime', now() - start);
     response.status(200).end(html);
 });
@@ -106,10 +129,8 @@ app.get('/screenshot/:url(*)', async (request, response) => {
         response.status(403).send('Render request forbidden, domain excluded');
         return;
     }
-    const scroll = parseInt(request.query.scroll || "0");
-    const wait = parseInt(request.query.wait || "0");
     const start = now();
-    const shot = await screenshot(request.params.url, scroll, wait);
+    const shot = await screenshot(request.params.url, request.query);
     // const img = new Buffer(shot, 'base64');
     response.set({
         'Content-Type': 'image/png',
