@@ -1,8 +1,5 @@
 FROM skiloop/docker-node
 
-COPY repositories /etc/apk/repositories 
-RUN apk update
-
 RUN addgroup -S app && adduser -S -g app app
 
 # Alternatively use ADD https:// (which will not be cached by Docker builder)
