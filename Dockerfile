@@ -10,20 +10,22 @@ WORKDIR /root/
 # Turn down the verbosity to default level.
 ENV NPM_CONFIG_LOGLEVEL warn
 
-RUN mkdir -p /home/
-
-# Wrapper/boot-strapper
-WORKDIR /home/
-
 # clone render project
+WORKDIR /home/
 RUN git clone https://github.com/skiloop/render.git app 
 
 WORKDIR /home/app
-RUN "echo 'install dependencies'" && npm i
+RUN echo "install dependencies" && npm i
 
 # install alternative chromeless
 WORKDIR /tmp
-RUN git clone https://github.com/anttiviljami/chromeless.git && cd chromeless && npm run-script build && cp -a dist /home/app/node_modules/chromeless/
+RUN npm i -g rimraf typescript
+RUN git clone https://github.com/anttiviljami/chromeless.git 
+WORKDIR chromeless 
+RUN npm i && npm run-script build && rm -rf /home/app/node_modules/chromeless/dist && cp -a dist /home/app/node_modules/chromeless/ 
+RUN npm un -g rimraf 
+WORKDIR /tmp
+RUN rm -fr chromeless
 
 
 # Set correct permissions to use non root user
@@ -35,6 +37,7 @@ RUN chown app:app -R /home/app \
 
 USER app
 EXPOSE 3000
+
 ENTRYPOINT [ "npm" ]
 CMD ["run", "start"]
 
